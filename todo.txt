@@ -1,0 +1,15 @@
+
+
+When you get a contact you can get their constituent group membership
+Get all contacts
+If subscribed, put in the MoFo list
+If in constituent group XYZ put in list XYZ
+
+
+get_bulk_constituent_data
+
+
+# get a webmaker contact
+# setup a DB table
+# connect to DB
+# Save to DB

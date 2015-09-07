@@ -1,0 +1,30 @@
+{
+  "name": "bsd-scrape",
+  "version": "1.0.0",
+  "description": "## Env",
+  "main": "scrape.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adamlofting/bsd-scrape.git"
+  },
+  "keywords": [
+    "scrape"
+  ],
+  "author": "Adam Lofting <contactme@adamlofting.com> (http://adamlofting.com/)",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/adamlofting/bsd-scrape/issues"
+  },
+  "homepage": "https://github.com/adamlofting/bsd-scrape#readme",
+  "dependencies": {
+    "async": "^1.4.2",
+    "crypto": "0.0.3",
+    "habitat": "^3.1.2",
+    "querystring": "^0.2.0",
+    "request": "^2.61.0",
+    "url": "^0.11.0"
+  }
+}
