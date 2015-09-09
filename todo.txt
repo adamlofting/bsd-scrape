@@ -1,15 +1,13 @@
 
 
-When you get a contact you can get their constituent group membership
-Get all contacts
-If subscribed, put in the MoFo list
-If in constituent group XYZ put in list XYZ
 
 
-get_bulk_constituent_data
+# Process BSD data
+
+Understand how ConstituentGroupDate is set / updated in BSD an implications for it's future usefulness
 
 
-# get a webmaker contact
-# setup a DB table
-# connect to DB
-# Save to DB
+Setup a loop
+Setup a timer
+Optimize
+Get onto Heroku
