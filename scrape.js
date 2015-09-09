@@ -322,38 +322,92 @@ function processBatch (callback) {
 /**
  * SCRAPER LOGIC BELOW
  */
-
-var count = 0;
-var LOOPS = 2;
-
 var startTime = new Date();
+
+// parallel requests to BSD as that's the slowest point in the process
+
+
+function processMoreRecords (callback) {
+  var SIMULTANIOUS_REQUESTS = 12;
+  var BATCHES_TO_PROCESS = 24;
+  var startingId;
+  var endingId;
+
+  async.waterfall([
+      function(callback) {
+        // Get the current highest ID saved from previous scraping
+          getCurrentHighestId (function (err, res) {
+            startingId = res;
+            console.log('CURRENT HIGHEST ID:', res);
+            callback(null, res);
+          });
+      },
+      function(currentHighestId, callback) {
+        var nextId = currentHighestId + 1;
+        var startingIds = [];
+        // build an array of starting IDs
+        for (var i = 0; i < BATCHES_TO_PROCESS; i++) {
+          startingIds.push(nextId);
+          nextId += BATCH_SIZE + 1;
+        }
+
+        console.log(startingIds);
+        endingId = startingIds[startingIds.length-1] + BATCH_SIZE;
+
+        async.eachLimit(startingIds, SIMULTANIOUS_REQUESTS, function (startingID, callback) {
+          var ids = buildIDQuery(startingID, BATCH_SIZE);
+          var query_url = bsd_url("cons/get_constituents_by_id", {
+                                    cons_ids: ids,
+                                    bundles: 'primary_cons_addr,primary_cons_email,cons_group,primary_cons_phone'
+                                  });
+          callBSD(query_url, function (err, res) {
+            callback(null);
+          });
+
+        }, function (err) {
+          if( err ) {
+              console.log(err);
+          }
+          callback();
+        });
+      }
+  ], function (err, result) {
+      console.log('PARALLEL REQUESTS processed');
+
+      var countTotal = endingId - startingId;
+
+      var endTime = new Date();
+      console.log(startTime);
+      console.log(endTime);
+      var diff = (endTime - startTime) / 1000;
+      var timePerRecord = (diff / countTotal).toFixed(3);
+      console.log('Time taken:', diff + ' seconds');
+      console.log('Time taken:', timePerRecord + ' seconds per record');
+      console.log(BATCH_SIZE, timePerRecord);
+      callback();
+  });
+}
+
+
 async.whilst(
-    function () { return count < LOOPS; },
+    function () {
+      getCurrentHighestId (function (err, res) {
+        return res > 3000000;
+      });
+    },
     function (callback) {
-        count++;
-        processBatch(function () {
+        processMoreRecords(function () {
           callback();
         });
     },
     function (err) {
-        console.log(LOOPS + ' x LOOPS COMPLETED');
-        console.log('BATCH_SIZE = ' + BATCH_SIZE);
-        var countTotal = LOOPS * BATCH_SIZE;
-        console.log('Processed ' + countTotal + ' Records');
-
-        var endTime = new Date();
-        console.log(startTime);
-        console.log(endTime);
-        console.log(endTime - startTime);
-        var diff = (endTime - startTime) / 1000;
-        var timePerRecord = (diff / countTotal).toFixed(2);
-        console.log('Time taken:', diff + ' seconds');
-        console.log('Time taken:', timePerRecord + ' seconds per record');
-        console.log(BATCH_SIZE, timePerRecord);
+        console.log("=====================================");
+        console.log("=====================================");
+        console.log("================ END ================");
+        console.log("=====================================");
+        console.log("=====================================");
     }
 );
-
-
 
 
 
