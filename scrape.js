@@ -9,10 +9,10 @@ var env = habitat.load('.env');
 
 // standard api params
 var api_root = "https://sendto.mozilla.org/page/api/";
-var api_id = env.get("BSD_API_ID");
+var api_id = env.get("BSD_API_ID") || process.env.BSD_API_ID;
 var api_timestamp = Date.now() / 1000 | 0;
 var api_version = "2";
-var api_secret = env.get("BSD_SECRET");
+var api_secret = env.get("BSD_SECRET") || process.env.BSD_SECRET;
 
 
 function bsd_url (api_path, params) {

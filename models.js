@@ -6,8 +6,8 @@ if (!global.hasOwnProperty('db')) {
   var Sequelize = require('sequelize');
 
   var sequelizeOptions = {};
-  sequelizeOptions.port = env.get("DB_PORT");
-  sequelizeOptions.host = env.get("DB_HOST");
+  sequelizeOptions.port = env.get("DB_PORT") || process.env.DB_PORT;
+  sequelizeOptions.host = env.get("DB_HOST") || process.env.DB_HOST;
   sequelizeOptions.dialect = 'mysql';
 
   if (process.env.DB_SSL) {
@@ -17,9 +17,9 @@ if (!global.hasOwnProperty('db')) {
     };
   }
 
-  var sequelize = new Sequelize(env.get("DB_NAME"),
-                                env.get("DB_USER"),
-                                env.get("DB_PASSWORD"),
+  var sequelize = new Sequelize(env.get("DB_NAME") || process.env.DB_NAME,
+                                env.get("DB_USER") || process.env.DB_USER,
+                                env.get("DB_PASSWORD") || process.env.DB_PASSWORD,
                                 sequelizeOptions);
   sequelize
     .authenticate()
