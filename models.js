@@ -1,13 +1,33 @@
 var habitat = require("habitat");
 var env = habitat.load('.env');
 
+var DB_PORT;
+var DB_HOST;
+var DB_NAME;
+var DB_USER;
+var DB_PASSWORD;
+
+if (env) {
+  DB_PORT = env.get("DB_PORT");
+  DB_HOST = env.get("DB_HOST");
+  DB_NAME = env.get("DB_NAME");
+  DB_USER = env.get("DB_USER");
+  DB_PASSWORD = env.get("DB_PASSWORD");
+} else {
+  DB_PORT = process.env.DB_PORT;
+  DB_HOST = process.env.DB_HOST;
+  DB_NAME = process.env.DB_NAME;
+  DB_USER = process.env.DB_USER;
+  DB_PASSWORD = process.env.DB_PASSWORD;
+}
+
 if (!global.hasOwnProperty('db')) {
 
   var Sequelize = require('sequelize');
 
   var sequelizeOptions = {};
-  sequelizeOptions.port = env.get("DB_PORT") || process.env.DB_PORT;
-  sequelizeOptions.host = env.get("DB_HOST") || process.env.DB_HOST;
+  sequelizeOptions.port = DB_PORT;
+  sequelizeOptions.host = DB_HOST;
   sequelizeOptions.dialect = 'mysql';
 
   if (process.env.DB_SSL) {
@@ -17,9 +37,9 @@ if (!global.hasOwnProperty('db')) {
     };
   }
 
-  var sequelize = new Sequelize(env.get("DB_NAME") || process.env.DB_NAME,
-                                env.get("DB_USER") || process.env.DB_USER,
-                                env.get("DB_PASSWORD") || process.env.DB_PASSWORD,
+  var sequelize = new Sequelize(DB_NAME,
+                                DB_USER,
+                                DB_PASSWORD,
                                 sequelizeOptions);
   sequelize
     .authenticate()
