@@ -341,7 +341,7 @@ var startTime = new Date();
 
 function processMoreRecords (callback) {
   var SIMULTANIOUS_REQUESTS = 9;
-  var BATCHES_TO_PROCESS = 24;
+  var BATCHES_TO_PROCESS = 250;
   var startingId;
   var endingId;
 
