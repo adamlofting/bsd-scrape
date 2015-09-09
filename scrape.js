@@ -98,7 +98,10 @@ function getClean(x) {
 function getCurrentHighestId (callback) {
     db.Constituent.find({order: '`bsdId` DESC'})
     .then(function (latest) {
-      var higest = latest.bsdId || 0;
+      var higest = 0;
+      if (latest && latest.bsdId) {
+        highest = latest.bsdId;
+      }
       callback(null, highest);
     });
 }
@@ -395,7 +398,6 @@ async.whilst(
       return (countEnd < 100000);
     },
     function (callback) {
-      console.log('yo');
       processMoreRecords(function () {
         getCurrentHighestId (function (err, res) {
           countEnd = res;
