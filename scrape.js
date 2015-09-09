@@ -98,7 +98,8 @@ function getClean(x) {
 function getCurrentHighestId (callback) {
     db.Constituent.find({order: '`bsdId` DESC'})
     .then(function (latest) {
-      callback(null, latest.bsdId);
+      var higest = latest.bsdId || 0;
+      callback(null, highest);
     });
 }
 
@@ -388,24 +389,26 @@ function processMoreRecords (callback) {
   });
 }
 
-
+var countEnd = 0;
 async.whilst(
     function () {
-      getCurrentHighestId (function (err, res) {
-        return res > 3000000;
-      });
+      return (countEnd < 100000);
     },
     function (callback) {
-        processMoreRecords(function () {
+      console.log('yo');
+      processMoreRecords(function () {
+        getCurrentHighestId (function (err, res) {
+          countEnd = res;
           callback();
         });
+      });
     },
     function (err) {
-        console.log("=====================================");
-        console.log("=====================================");
-        console.log("================ END ================");
-        console.log("=====================================");
-        console.log("=====================================");
+      console.log("=====================================");
+      console.log("=====================================");
+      console.log("================ END ================");
+      console.log("=====================================");
+      console.log("=====================================");
     }
 );
 
