@@ -155,7 +155,7 @@ function saveConstituents (json, callback) {
     if (cons[i].cons_group) {
       var groupsArray2 = cons[i].cons_group;
       for (var k = groupsArray2.length - 1; k >= 0; k--) {
-        console.log('DATE:', groupsArray2[k].modified_dt);
+
         var activity = {  constituentBSDId: cons[i].id,
                           constituentGroupName: groupsArray2[k].name,
                           constituentGroupDate: new Date(1000 * groupsArray2[k].modified_dt)
@@ -170,36 +170,18 @@ function saveConstituents (json, callback) {
   async.parallel({
     saveConstituents: function(callback){
 
-        async.eachLimit(constituentsToSave, 5, function(constituent, callback) {
-          db.Constituent.upsert(constituent)
-            .then(function () {
-              console.log('Saved to DB:', constituent.bsdId);
-              callback();
-            }
-          );
-        }, function (err) {
-            if( err ) {
-              console.log(err);
-            }
-            return callback(null);
-        });
+        db.Constituent.bulkCreate(constituentsToSave)
+          .then(function () {
+            callback(null);
+          });
 
     },
     saveActivities: function(callback){
 
-      async.eachLimit(activitiesToSave, 12, function(activity, callback) {
-        console.log(activity);
-        db.Activity.upsert(activity)
-            .then(function () {
-              callback();
-            }
-          );
-        }, function (err) {
-            if( err ) {
-              console.log(err);
-            }
-            return callback(null);
-        });
+      db.Activity.bulkCreate(activitiesToSave)
+          .then(function () {
+            callback(null);
+          });
 
     }
   },
@@ -296,7 +278,7 @@ function callBSD (query_url, callback) {
 // this generates a URL string based on the length of user ids
 // which reach up to 7 chars. So the total lenght needs to stay
 // within sensible limits for the server to handle the request
-var BATCH_SIZE = 400;
+var BATCH_SIZE = 500;
 
 function processBatch (callback) {
   async.waterfall([
@@ -307,10 +289,10 @@ function processBatch (callback) {
             callback(null, res);
           });
       },
-      function(highestIdOnInit, callback) {
+      function(currentHighestId, callback) {
         // get the next batch
-        var currentHighestId = highestIdOnInit;
-        var ids = buildIDQuery(currentHighestId, BATCH_SIZE);
+        var nextId = currentHighestId + 1;
+        var ids = buildIDQuery(nextId, BATCH_SIZE);
         var query_url = bsd_url("cons/get_constituents_by_id", {
                                   cons_ids: ids,
                                   bundles: 'primary_cons_addr,primary_cons_email,cons_group,primary_cons_phone'
@@ -331,7 +313,7 @@ function processBatch (callback) {
  */
 
 var count = 0;
-var LOOPS = 3;
+var LOOPS = 2;
 
 var startTime = new Date();
 async.whilst(

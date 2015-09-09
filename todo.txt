@@ -7,7 +7,4 @@
 Understand how ConstituentGroupDate is set / updated in BSD an implications for it's future usefulness
 
 
-Setup a loop
-Setup a timer
-Optimize
 Get onto Heroku
