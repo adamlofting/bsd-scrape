@@ -98,7 +98,7 @@ function getClean(x) {
 function getCurrentHighestId (callback) {
     db.Constituent.find({order: '`bsdId` DESC'})
     .then(function (latest) {
-      var higest = 0;
+      var highest = 0;
       if (latest && latest.bsdId) {
         highest = latest.bsdId;
       }
