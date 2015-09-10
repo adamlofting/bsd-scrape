@@ -9,13 +9,25 @@ var env = habitat.load('.env');
 
 var BSD_API_ID;
 var BSD_SECRET;
+var BATCH_SIZE;
+var SIMULTANIOUS_REQUESTS;
+var BATCHES_TO_PROCESS;
+var HRS_TO_UPDATE;
 
 if (env) {
   BSD_API_ID = env.get("BSD_API_ID");
   BSD_SECRET = env.get("BSD_SECRET");
+  BATCH_SIZE = env.get("BATCH_SIZE");
+  SIMULTANIOUS_REQUESTS = env.get("SIMULTANIOUS_REQUESTS");
+  BATCHES_TO_PROCESS = env.get("BATCHES_TO_PROCESS");
+  HRS_TO_UPDATE = env.get("HRS_TO_UPDATE");
 } else {
   BSD_API_ID = process.env.BSD_API_ID;
   BSD_SECRET = process.env.BSD_SECRET;
+  BATCH_SIZE = process.env.BATCH_SIZE;
+  SIMULTANIOUS_REQUESTS = process.env.SIMULTANIOUS_REQUESTS;
+  BATCHES_TO_PROCESS = process.env.BATCHES_TO_PROCESS;
+  HRS_TO_UPDATE = process.env.HRS_TO_UPDATE;
 }
 
 // standard api params
@@ -112,7 +124,7 @@ function getCurrentHighestId (callback) {
 /**
  * FUNCTION FOR ITERATING THROUGH BSD RESULTS AND SAVING
  */
-function saveConstituents (json, callback) {
+function saveConstituents (json, options, callback) {
   var cons = json.api.cons;
   var constituentsToSave = [];
   var activitiesToSave = [];
@@ -186,32 +198,71 @@ function saveConstituents (json, callback) {
           activitiesToSave.push(activity);
         }
       }
-
       constituentsToSave.push(toSave);
     }
 
-  async.parallel({
-    saveConstituents: function(callback){
+  if (options.isUpdate) {
+    // do upserts instead of bulk inserts
+    // it's slower but fine for smaller batches
+    async.parallel({
+      upsertConstituents: function(callback){
 
-        db.Constituent.bulkCreate(constituentsToSave)
+        async.eachLimit(constituentsToSave, 8, function (item, callback) {
+          console.log('upserting:', item.bsdId);
+          db.Constituent.upsert(item)
           .then(function () {
             callback(null);
           });
+        }, function(err){
+            callback();
+        });
 
+      },
+      upsertActivities: function(callback){
+
+        async.eachLimit(constituentsToSave, 10, function (item, callback) {
+          db.Activity.upsert(item)
+          .then(function () {
+            callback(null);
+          });
+        }, function(err){
+            callback();
+        });
+
+      }
     },
-    saveActivities: function(callback){
+    function(err, results) {
+      // finished saving both types of record
+      console.log('Finished parallel');
+      return callback(null);
+    });
+  } else {
 
-      db.Activity.bulkCreate(activitiesToSave)
-          .then(function () {
-            callback(null);
-          });
+    // options.isUpdate === false
+    // so do a regular bulk insert
+    async.parallel({
+      saveConstituents: function(callback){
 
-    }
-  },
-  function(err, results) {
-    // finished saving both types of record
-    return callback(null);
-  });
+          db.Constituent.bulkCreate(constituentsToSave)
+            .then(function () {
+              callback(null);
+            });
+
+      },
+      saveActivities: function(callback){
+
+        db.Activity.bulkCreate(activitiesToSave)
+            .then(function () {
+              callback(null);
+            });
+
+      }
+    },
+    function(err, results) {
+      // finished saving both types of record
+      return callback(null);
+    });
+  }
 
 }
 
@@ -223,7 +274,7 @@ function callBSD (query_url, callback) {
   request(query_url, function (error, response, body) {
     if (error) {
       console.error(error);
-      return;
+      return callback();
     }
 
     if (response.statusCode == 202) {
@@ -286,49 +337,16 @@ function callBSD (query_url, callback) {
         }
       );
     } else {
+      // response not deferred
       console.log(response.statusCode);
       var xml = body;
       var json = parser.toJson(xml, {object: true});
-      saveConstituents(json, function () {
-        console.log('Finished Saving this batch of Constituents');
-        callback(null);
-      });
+      callback(null, json);
     }
 
   });
 }
 
-// this generates a URL string based on the length of user ids
-// which reach up to 7 chars. So the total lenght needs to stay
-// within sensible limits for the server to handle the request
-var BATCH_SIZE = 500;
-
-function processBatch (callback) {
-  async.waterfall([
-      function(callback) {
-        // Get the current highest ID saved from previous scraping
-          getCurrentHighestId (function (err, res) {
-            console.log('CURRENT HIGHEST ID:', res);
-            callback(null, res);
-          });
-      },
-      function(currentHighestId, callback) {
-        // get the next batch
-        var nextId = currentHighestId + 1;
-        var ids = buildIDQuery(nextId, BATCH_SIZE);
-        var query_url = bsd_url("cons/get_constituents_by_id", {
-                                  cons_ids: ids,
-                                  bundles: 'primary_cons_addr,primary_cons_email,cons_group,primary_cons_phone'
-                                });
-        callBSD(query_url, function (err, res) {
-          callback(null);
-        });
-      }
-  ], function (err, result) {
-      console.log('BATCH processed');
-      callback();
-  });
-}
 
 
 /**
@@ -340,8 +358,7 @@ var startTime = new Date();
 
 
 function processMoreRecords (callback) {
-  var SIMULTANIOUS_REQUESTS = 9;
-  var BATCHES_TO_PROCESS = 250;
+
   var startingId;
   var endingId;
 
@@ -372,8 +389,10 @@ function processMoreRecords (callback) {
                                     cons_ids: ids,
                                     bundles: 'primary_cons_addr,primary_cons_email,cons_group,primary_cons_phone'
                                   });
-          callBSD(query_url, function (err, res) {
-            callback(null);
+          callBSD(query_url, function (err, json) {
+            saveConstituents(json, { isUpdate: false }, function () {
+              callback(null);
+            });
           });
 
         }, function (err) {
@@ -401,7 +420,8 @@ function processMoreRecords (callback) {
 }
 
 
-async.whilst(
+function runScrape (callback) {
+  async.whilst(
     function () {
       return _complete === false;
     },
@@ -416,16 +436,31 @@ async.whilst(
       console.log("================ END ================");
       console.log("=====================================");
       console.log("=====================================");
+      callback();
     }
-);
+  );
+}
 
+function checkForUpdates (callback) {
+  var date_ts = new Date() / 1000;
+  var seconds_diff = HRS_TO_UPDATE * 60 * 60;
+  var since = date_ts - seconds_diff;
+  var query_url = bsd_url("cons/get_updated_constituents", {
+                                  changed_since: since,
+                                  bundles: 'primary_cons_addr,primary_cons_email,cons_group,primary_cons_phone'
+                                });
+  callBSD(query_url, function (err, json) {
+    saveConstituents(json, { isUpdate: true }, function () {
+      console.log('Finished saving constituents');
+      callback(null);
+    });
+  });
+}
 
-
-
-
-return;
-
-
+module.exports = {
+  runScrape: runScrape,
+  checkForUpdates: checkForUpdates
+};
 
 
 
