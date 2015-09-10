@@ -3,6 +3,7 @@ var habitat = require("habitat");
 var request = require('request');
 var async = require('async');
 var db = require('./models.js');
+var dbdirect = require('./directdb.js');
 var parser = require('xml2json');
 
 var env = habitat.load('.env');
@@ -457,9 +458,89 @@ function checkForUpdates (callback) {
   });
 }
 
+
+function backFillGaps (callback) {
+  // get all ids
+  dbdirect.getAllIds(function  (err, results) {
+    console.log('Got all Ids');
+
+    var highestId = results[0].bsdId;
+    console.log('highest:', highestId);
+
+    var existingIds = [];
+    for (var i = results.length - 1; i >= 0; i--) {
+      existingIds.push(results[i].bsdId);
+    }
+
+    console.log("existingIds.length:", existingIds.length);
+
+    var expectedIds = [];
+    for (var j = 1; j < highestId; j++) {
+      expectedIds.push(j);
+    }
+
+    console.log("expectedIds.length:", expectedIds.length);
+
+// 1, 2, 5, 6, 7
+// 1, 2, 3, 4, 5, 6, 7
+
+    var has = {};
+    var different = [];
+    var length1 = existingIds.length;
+    var length2 = expectedIds.length;
+
+
+    for(var i=0; i<length1; i++){
+            has[existingIds[i]]=NaN;
+    }
+    for(var i=0; i<length2; i++){
+        var val=expectedIds[i];
+        if(has[val] === undefined){
+            has[val]=null;
+        }
+        else{
+            if(has[val]!=null){
+                has[val]=true;
+            }
+        }
+    }
+    for(var i in has){
+        if (!has[i]) different.push(i);
+    }
+
+    var diffLength = different.length;
+    console.log('different.length', diffLength);
+
+    var batch = different.slice(0, BATCH_SIZE);
+
+
+    var ids = "";
+    var batchLength = batch.length;
+    for (var k = 0; k < batchLength; k++) {
+      ids += batch[k];
+      if (k < batchLength-1) {
+        ids += ",";
+      }
+    }
+    console.log(ids);
+
+    var query_url = bsd_url("cons/get_constituents_by_id", {
+                              cons_ids: ids,
+                              bundles: 'primary_cons_addr,primary_cons_email,cons_group,primary_cons_phone'
+                            });
+    callBSD(query_url, function (err, json) {
+      saveConstituents(json, { isUpdate: true }, function () {
+        console.log('============', diffLength);
+        return callback(null);
+      });
+    });
+  });
+}
+
 module.exports = {
   runScrape: runScrape,
-  checkForUpdates: checkForUpdates
+  checkForUpdates: checkForUpdates,
+  backFillGaps: backFillGaps
 };
 
 
