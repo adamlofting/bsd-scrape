@@ -1,1 +1,2 @@
-scrape: node scrape.js
+scrape: node runscrape.js
+update: node runupdate.js
