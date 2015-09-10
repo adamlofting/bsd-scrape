@@ -341,8 +341,14 @@ function callBSD (query_url, callback) {
       // response not deferred
       console.log(response.statusCode);
       var xml = body;
-      var json = parser.toJson(xml, {object: true});
-      callback(null, json);
+
+      try {
+        var json = parser.toJson(xml, {object: true});
+        callback(null, json);
+      } catch (e) {
+        callback(null, null);
+      }
+
     }
 
   });
@@ -513,27 +519,44 @@ function backFillGaps (callback) {
 
     var batch = different.slice(0, BATCH_SIZE);
 
+    async.whilst(
+        function () { return different.length > 10; },
+        function (callback) {
+            // take a small number to work on
+            batch = different.splice(0, 5);
 
-    var ids = "";
-    var batchLength = batch.length;
-    for (var k = 0; k < batchLength; k++) {
-      ids += batch[k];
-      if (k < batchLength-1) {
-        ids += ",";
-      }
-    }
-    console.log(ids);
+            var ids = "";
+            var batchLength = batch.length;
+            for (var k = 0; k < batchLength; k++) {
+              ids += batch[k];
+              if (k < batchLength-1) {
+                ids += ",";
+              }
+            }
+            console.log(ids);
 
-    var query_url = bsd_url("cons/get_constituents_by_id", {
-                              cons_ids: ids,
-                              bundles: 'primary_cons_addr,primary_cons_email,cons_group,primary_cons_phone'
-                            });
-    callBSD(query_url, function (err, json) {
-      saveConstituents(json, { isUpdate: true }, function () {
-        console.log('============', diffLength);
-        return callback(null);
-      });
-    });
+            var query_url = bsd_url("cons/get_constituents_by_id", {
+                                      cons_ids: ids,
+                                      bundles: 'primary_cons_addr,primary_cons_email,cons_group,primary_cons_phone'
+                                    });
+            callBSD(query_url, function (err, json) {
+              if (!json) {
+                console.log('Error parsing XML');
+                return callback(null);
+              }
+
+              saveConstituents(json, { isUpdate: true }, function () {
+                diffLength = different.length;
+                console.log('============', diffLength);
+                return callback(null);
+              });
+            });
+        },
+        function (err) {
+            return callback();
+        }
+    );
+
   });
 }
 
