@@ -24,10 +24,10 @@ if (env) {
 } else {
   BSD_API_ID = process.env.BSD_API_ID;
   BSD_SECRET = process.env.BSD_SECRET;
-  BATCH_SIZE = process.env.BATCH_SIZE;
-  SIMULTANIOUS_REQUESTS = process.env.SIMULTANIOUS_REQUESTS;
-  BATCHES_TO_PROCESS = process.env.BATCHES_TO_PROCESS;
-  HRS_TO_UPDATE = process.env.HRS_TO_UPDATE;
+  BATCH_SIZE = parseInt(process.env.BATCH_SIZE);
+  SIMULTANIOUS_REQUESTS = parseInt(process.env.SIMULTANIOUS_REQUESTS);
+  BATCHES_TO_PROCESS = parseInt(process.env.BATCHES_TO_PROCESS);
+  HRS_TO_UPDATE = parseInt(process.env.HRS_TO_UPDATE);
 }
 
 // standard api params
