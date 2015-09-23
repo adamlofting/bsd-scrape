@@ -132,74 +132,87 @@ function saveConstituents (json, options, callback) {
 
   if (!cons || (cons.length === 0)) {
     _complete = true;
+    console.log('===== Flagging as complete');
     return callback(null);
   }
 
+  var toSave;
   for (var i = 0; i < cons.length; i++) {
-    var toSave = {};
-    toSave.bsdId = cons[i].id;
-    toSave.bsdCreatedAt = cons[i].create_dt;
 
-    if (cons[i].cons_email) {
-      toSave.emailAddress = cons[i].cons_email.email;
+    // check it's a valid record
+    if (cons[i].id && cons[i].id > 0) {
 
-        // check if they are subscribed
-        if (cons[i].cons_email.is_subscribed === '1') {
+      toSave = {};
+      toSave.bsdId = cons[i].id;
+      toSave.bsdCreatedAt = cons[i].create_dt;
 
-          // add to main mofo list
-          toSave.subscribedMofo = true;
+      if (cons[i].cons_email) {
+        toSave.emailAddress = cons[i].cons_email.email;
 
-          // check constituent group membership for other interests
-          if (cons[i].cons_group) {
-            var groupsArray = cons[i].cons_group;
-            for (var j = groupsArray.length - 1; j >= 0; j--) {
-              var groupId = groupsArray[j].id;
+          // check if they are subscribed
+          if (cons[i].cons_email.is_subscribed === '1') {
 
-              if (constituentGroupsWebmaker.indexOf(groupId) !== -1) {
-                toSave.subscribedWebmaker = true;
-              }
+            // add to main mofo list
+            toSave.subscribedMofo = true;
 
-              if (constituentGroupsLearning.indexOf(groupId) !== -1) {
-                toSave.subscribedLearning = true;
-              }
+            // check constituent group membership for other interests
+            if (cons[i].cons_group) {
+              var groupsArray = cons[i].cons_group;
 
-              if (constituentGroupsMozfest.indexOf(groupId) !== -1) {
-                toSave.subscribedMozfest = true;
-              }
+              var groupId;
+              for (var j = groupsArray.length - 1; j >= 0; j--) {
+                groupId = groupsArray[j].id;
 
-              if (constituentGroupsMakerParty.indexOf(groupId) !== -1) {
-                toSave.interestMakerparty = true;
+                try {
+                    groupId = parseInt(groupId);
+                } catch (e) {}
+
+                if (constituentGroupsWebmaker.indexOf(groupId) !== -1) {
+                  toSave.subscribedWebmaker = true;
+                }
+
+                if (constituentGroupsLearning.indexOf(groupId) !== -1) {
+                  toSave.subscribedLearning = true;
+                }
+
+                if (constituentGroupsMozfest.indexOf(groupId) !== -1) {
+                  toSave.subscribedMozfest = true;
+                }
+
+                if (constituentGroupsMakerParty.indexOf(groupId) !== -1) {
+                  toSave.interestMakerparty = true;
+                }
               }
             }
           }
         }
-      }
 
-      toSave.firstName = getClean(cons[i].firstname) || null;
-      toSave.lastName = getClean(cons[i].lastname) || null;
+        toSave.firstName = getClean(cons[i].firstname) || null;
+        toSave.lastName = getClean(cons[i].lastname) || null;
 
-      if (cons[i].cons_addr) {
-        toSave.addr1 = getClean(cons[i].cons_addr.addr1) || null;
-        toSave.addr2 = getClean(cons[i].cons_addr.addr2) || null;
-        toSave.city = getClean(cons[i].cons_addr.city) || null;
-        toSave.state = getClean(cons[i].cons_addr.state_cd) || null;
-        toSave.zip = getClean(cons[i].cons_addr.zip) || null;
-        toSave.countryCode = getClean(cons[i].cons_addr.country) || null;
-      }
-
-      // Store a list of constituent group activities
-      if (cons[i].cons_group) {
-        var groupsArray2 = cons[i].cons_group;
-        for (var k = groupsArray2.length - 1; k >= 0; k--) {
-
-          var activity = {  constituentBSDId: cons[i].id,
-                            constituentGroupName: groupsArray2[k].name,
-                            constituentGroupDate: new Date(1000 * groupsArray2[k].modified_dt)
-                          };
-          activitiesToSave.push(activity);
+        if (cons[i].cons_addr) {
+          toSave.addr1 = getClean(cons[i].cons_addr.addr1) || null;
+          toSave.addr2 = getClean(cons[i].cons_addr.addr2) || null;
+          toSave.city = getClean(cons[i].cons_addr.city) || null;
+          toSave.state = getClean(cons[i].cons_addr.state_cd) || null;
+          toSave.zip = getClean(cons[i].cons_addr.zip) || null;
+          toSave.countryCode = getClean(cons[i].cons_addr.country) || null;
         }
+
+        // Store a list of constituent group activities
+        if (cons[i].cons_group) {
+          var groupsArray2 = cons[i].cons_group;
+          for (var k = groupsArray2.length - 1; k >= 0; k--) {
+
+            var activity = {  constituentBSDId: cons[i].id,
+                              constituentGroupName: groupsArray2[k].name,
+                              constituentGroupDate: new Date(1000 * groupsArray2[k].modified_dt)
+                            };
+            activitiesToSave.push(activity);
+          }
+        }
+        constituentsToSave.push(toSave);
       }
-      constituentsToSave.push(toSave);
     }
 
   if (options.isUpdate) {
@@ -430,7 +443,7 @@ function processMoreRecords (callback) {
 function runScrape (callback) {
   async.whilst(
     function () {
-      return _complete === false;
+      return (_complete === false);
     },
     function (callback) {
       processMoreRecords(function () {
@@ -523,7 +536,7 @@ function backFillGaps (callback) {
         function () { return different.length > 10; },
         function (callback) {
             // take a small number to work on
-            batch = different.splice(0, 5);
+            batch = different.splice(0, 2);
 
             var ids = "";
             var batchLength = batch.length;
