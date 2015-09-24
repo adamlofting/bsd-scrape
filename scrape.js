@@ -14,6 +14,7 @@ var BATCH_SIZE;
 var SIMULTANIOUS_REQUESTS;
 var BATCHES_TO_PROCESS;
 var HRS_TO_UPDATE;
+var NUMBER_TO_WORK_ON;
 
 if (env) {
   BSD_API_ID = env.get("BSD_API_ID");
@@ -22,6 +23,7 @@ if (env) {
   SIMULTANIOUS_REQUESTS = env.get("SIMULTANIOUS_REQUESTS");
   BATCHES_TO_PROCESS = env.get("BATCHES_TO_PROCESS");
   HRS_TO_UPDATE = env.get("HRS_TO_UPDATE");
+  NUMBER_TO_WORK_ON = env.get("NUMBER_TO_WORK_ON");
 } else {
   BSD_API_ID = process.env.BSD_API_ID;
   BSD_SECRET = process.env.BSD_SECRET;
@@ -29,6 +31,7 @@ if (env) {
   SIMULTANIOUS_REQUESTS = parseInt(process.env.SIMULTANIOUS_REQUESTS);
   BATCHES_TO_PROCESS = parseInt(process.env.BATCHES_TO_PROCESS);
   HRS_TO_UPDATE = parseInt(process.env.HRS_TO_UPDATE);
+  NUMBER_TO_WORK_ON = parseInt(process.env.NUMBER_TO_WORK_ON);
 }
 
 // standard api params
@@ -536,7 +539,7 @@ function backFillGaps (callback) {
         function () { return different.length > 10; },
         function (callback) {
             // take a small number to work on
-            batch = different.splice(0, 2);
+            batch = different.splice(0, NUMBER_TO_WORK_ON);
 
             var ids = "";
             var batchLength = batch.length;
