@@ -129,6 +129,16 @@ function getCurrentHighestId (callback) {
  * FUNCTION FOR ITERATING THROUGH BSD RESULTS AND SAVING
  */
 function saveConstituents (json, options, callback) {
+  if (!json) {
+    return callback(null);
+  }
+  if (!json.api) {
+    return callback(null);
+  }
+  if (!json.api.cons) {
+    return callback(null);
+  }
+
   var cons = json.api.cons;
   var constituentsToSave = [];
   var activitiesToSave = [];
@@ -480,6 +490,117 @@ function checkForUpdates (callback) {
   });
 }
 
+function getMissingIds (callback) {
+  dbdirect.getAllIds(function  (err, results) {
+    console.log('Got all Ids');
+
+    var highestId = results[0].bsdId;
+    console.log('highest:', highestId);
+
+    var existingIds = [];
+    for (var i = results.length - 1; i >= 0; i--) {
+      existingIds.push(results[i].bsdId);
+    }
+
+    console.log("existingIds.length:", existingIds.length);
+
+    var expectedIds = [];
+    for (var j = 1; j < highestId; j++) {
+      expectedIds.push(j);
+    }
+
+    console.log("expectedIds.length:", expectedIds.length);
+
+// 1, 2, 5, 6, 7
+// 1, 2, 3, 4, 5, 6, 7
+
+    var has = {};
+    var different = [];
+    var length1 = existingIds.length;
+    var length2 = expectedIds.length;
+
+
+    for(var i=0; i<length1; i++){
+            has[existingIds[i]]=NaN;
+    }
+    for(var i=0; i<length2; i++){
+        var val=expectedIds[i];
+        if(has[val] === undefined){
+            has[val]=null;
+        }
+        else{
+            if(has[val]!=null){
+                has[val]=true;
+            }
+        }
+    }
+    for(var i in has){
+        if (!has[i]) different.push(i);
+    }
+
+    var diffLength = different.length;
+    console.log('different.length', diffLength);
+
+    callback(null, different);
+  });
+}
+
+
+function simpleQuery (arrayOfIds) {
+    var ids = "";
+    for (var i = 0; i < arrayOfIds.length; i++) {
+      ids += arrayOfIds[i];
+      if (i < (arrayOfIds.length -1)) {
+        ids += ",";
+      }
+    }
+    return ids;
+}
+
+function bigFillGaps (callback) {
+  getMissingIds(function (err, res) {
+    var missingIds = res;
+
+    var batches = [];
+    var batchId = 0;
+    var count = 1;
+    for (var i = 0; i < missingIds.length; i++) {
+
+      if (!batches[batchId]) {
+        batches.push([]);
+      }
+
+      batches[batchId].push(missingIds[i]);
+      count++;
+
+      if (count === BATCH_SIZE) {
+        batchId++;
+        count = 1;
+      }
+    }
+
+
+    async.eachLimit(batches, SIMULTANIOUS_REQUESTS, function (batch, callback) {
+        var ids = simpleQuery(batch);
+        var query_url = bsd_url("cons/get_constituents_by_id", {
+                                  cons_ids: ids,
+                                  bundles: 'primary_cons_addr,primary_cons_email,cons_group,primary_cons_phone'
+                                });
+
+        callBSD(query_url, function (err, json) {
+          saveConstituents(json, { isUpdate: false }, function () {
+            callback(null);
+          });
+        });
+
+      }, function (err) {
+        if( err ) {
+            console.log(err);
+        }
+        callback();
+      });
+  });
+}
 
 function backFillGaps (callback) {
   // get all ids
@@ -579,7 +700,8 @@ function backFillGaps (callback) {
 module.exports = {
   runScrape: runScrape,
   checkForUpdates: checkForUpdates,
-  backFillGaps: backFillGaps
+  backFillGaps: backFillGaps,
+  bigFillGaps: bigFillGaps
 };
 
 
