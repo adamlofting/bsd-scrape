@@ -268,7 +268,7 @@ function getUpdatedSince (date, callback) {
 }
 
 function updatedSinceExport (callback) {
-  var date = new Date (2015,8,30);
+  var date = new Date (2015,8,24, 19, 0);
   getUpdatedSince(date, function (err, results) {
     console.log('Got latest');
     console.log(results.length);
@@ -280,7 +280,8 @@ function updatedSinceExport (callback) {
 function runUpdate (callback) {
 
   var date = new Date();
-  date.setMinutes(date.getMinutes() - 60);
+  // runs hourly, so checking for 90 mins gives sufficient buffer
+  date.setMinutes(date.getMinutes() - 90);
   getUpdatedSince(date, function (err, results) {
     console.log('Got latest');
     console.log(results.length);
